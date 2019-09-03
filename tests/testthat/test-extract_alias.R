@@ -1,0 +1,44 @@
+test_that("column aliases extract as expected", {
+  expect_true(all(
+    extract_alias("abc xyz") == c(xyz = "abc"),
+    extract_alias("'abc'xyz") == c(xyz = "'abc'"),
+    extract_alias("abc 'xyz'") == c(xyz = "abc"),
+    extract_alias("abc'xyz'") == c(xyz = "abc"),
+    extract_alias("'abc' 'xyz'") == c(xyz = "'abc'"),
+    extract_alias("abc AS xyz") == c(xyz = "abc"),
+    extract_alias("'abc' AS xyz") == c(xyz = "'abc'"),
+    extract_alias("abc AS 'xyz'") == c(xyz = "abc"),
+    extract_alias("'abc' AS 'xyz'") == c(xyz = "'abc'"),
+    extract_alias("'abc' AS 'xyz'") == c(xyz = "'abc'"),
+    extract_alias("'abc'AS xyz") == c(xyz = "'abc'"),
+    extract_alias("abc AS'xyz'") == c(xyz = "abc"),
+    extract_alias("'abc'AS 'xyz'") == c(xyz = "'abc'"),
+    extract_alias("'abc' AS'xyz'") == c(xyz = "'abc'"),
+    extract_alias("'abc'AS'xyz'") == c(xyz = "'abc'"),
+    extract_alias("'abc' AS 'xyz'") == c(xyz = "'abc'"),
+    extract_alias("'abc''xyz'") == "'abc''xyz'",
+    extract_alias("abc AAS 'xyz'") == c(xyz = "abc AAS"),
+    extract_alias("(abc) xyz") == c(xyz = "(abc)"),
+    extract_alias("2+2'xyz'") == c(xyz = "2+2"),
+    extract_alias("2+2") == "2+2",
+    extract_alias("cast(1 as string)l") == c(l = "cast(1 as string)"),
+    extract_alias("x between y and z l") == c(l = "x between y and z")
+  ))
+})
+
+test_that("column aliases extract as expected with UTF-8 characters present", {
+  skip_on_os("windows")
+  expect_true(all(
+    extract_alias("ö x") == c(x = "ö"),
+    extract_alias("ö 'ö'") == c("ö" = "ö"),
+    extract_alias("'ö' 'ö'") == c("ö" = "'ö'"),
+    extract_alias("ö AS 'ö'") == c("ö" = "ö"),
+    extract_alias("ö AS'ö'") == c("ö" = "ö"),
+    extract_alias("'ö'AS'ö'") == c("ö" = "'ö'"),
+    extract_alias("ö as 1") == "ö as 1",
+    extract_alias("ö ö") == c("ö" = "ö"),
+    extract_alias("ö AS ö") == c("ö" = "ö"),
+    extract_alias("1 as ö") == c("ö" = "1"),
+    extract_alias("ÿ ź") == c("ź" = "ÿ")
+  ))
+})
