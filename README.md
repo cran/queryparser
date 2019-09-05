@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# queryparser
+# queryparser <img src="man/figures/logo.png" align="right" width="120" />
 
 <!-- badges: start -->
 
@@ -13,14 +13,14 @@ expressions.
 ## Installation
 
 Install the released version of **queryparser** from
-[CRAN](https://CRAN.R-project.org) with:
+[CRAN](https://CRAN.R-project.org/package=queryparser) with:
 
 ``` r
 install.packages("queryparser")
 ```
 
-Or install the development version from [GitHub](https://github.com/)
-with:
+Or install the development version from
+[GitHub](https://github.com/ianmcook/queryparser) with:
 
 ``` r
 # install.packages("devtools")
@@ -86,6 +86,9 @@ parse_query(
 #> $select$avg_delay
 #> round(mean(arr_delay, na.rm = TRUE))
 #> 
+#> attr(,"aggregate")
+#>                      num_flts      dist avg_delay 
+#>     FALSE     FALSE      TRUE      TRUE      TRUE 
 #> 
 #> $from
 #> $from[[1]]
@@ -94,7 +97,7 @@ parse_query(
 #> 
 #> $where
 #> $where[[1]]
-#> (distance >= 200 & distance <= 300) && !is.na(air_time)
+#> (distance >= 200 & distance <= 300) & !is.na(air_time)
 #> 
 #> 
 #> $group_by
@@ -119,10 +122,16 @@ parse_query(
 #> 
 #> attr(,"descreasing")
 #> [1] TRUE TRUE
+#> attr(,"aggregate")
+#> [1] FALSE FALSE
 #> 
 #> $limit
 #> $limit[[1]]
 #> [1] 100
+#> 
+#> 
+#> attr(,"aggregate")
+#> [1] TRUE
 ```
 
 Set the argument `tidyverse` to `TRUE` to use functions from
@@ -132,11 +141,14 @@ Set the argument `tidyverse` to `TRUE` to use functions from
 [lubridate](https://lubridate.tidyverse.org) in the R expressions:
 
 ``` r
-parse_query("SELECT COUNT(*) FROM t WHERE x BETWEEN y AND z ORDER BY q DESC", tidyverse = TRUE)
+parse_query("SELECT COUNT(*) AS n FROM t WHERE x BETWEEN y AND z ORDER BY n DESC", tidyverse = TRUE)
 #> $select
-#> $select[[1]]
+#> $select$n
 #> dplyr::n()
 #> 
+#> attr(,"aggregate")
+#>    n 
+#> TRUE 
 #> 
 #> $from
 #> $from[[1]]
@@ -150,7 +162,13 @@ parse_query("SELECT COUNT(*) FROM t WHERE x BETWEEN y AND z ORDER BY q DESC", ti
 #> 
 #> $order_by
 #> $order_by[[1]]
-#> dplyr::desc(q)
+#> dplyr::desc(n)
+#> 
+#> attr(,"aggregate")
+#> [1] FALSE
+#> 
+#> attr(,"aggregate")
+#> [1] TRUE
 ```
 
 **queryparser** will translate only explicitly allowed functions and
@@ -170,6 +188,7 @@ parse_query("SELECT x FROM y WHERE system('rm -rf /')")
   - The `WITH` clause (common table expressions)
   - `OVER` expressions (window or analytic functions)
   - `CASE` expressions
+  - Line comments `--` or block comments `/* */`
   - Some SQL functions and operators
 
 **queryparser** currently has the following limitations:
@@ -181,6 +200,9 @@ parse_query("SELECT x FROM y WHERE system('rm -rf /')")
     enclose the expression in parentheses.
   - The error messages that occur when attempting to parse invalid or
     unrecognized SQL are often non-informative.
+  - When one or more individual expressions within a `SELECT` statement
+    are longer than 500 characters, errors or unexpected results can
+    occur.
 
 ## Non-Goals
 

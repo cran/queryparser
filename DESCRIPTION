@@ -1,7 +1,7 @@
 Package: queryparser
 Type: Package
 Title: Translate 'SQL' Queries into 'R' Expressions
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: c(
     person("Ian", "Cook", email = "ian@cloudera.com", role = c("aut", "cre")),
     person(family = "Cloudera", role = c("cph"))
@@ -20,8 +20,8 @@ Collate: 'compat.R' 'agg_scalar.R' 'check_expressions.R' 'common.R'
         'replace.R' 'secure.R' 'split_query.R' 'squish_sql.R'
         'translate.R' 'unpipe.R' 'wrap_bangs.R'
 Suggests: testthat (>= 2.1.0)
-Packaged: 2019-09-01 17:57:16 UTC; icook
+Packaged: 2019-09-04 22:14:28 UTC; icook
 Author: Ian Cook [aut, cre],
   Cloudera [cph]
 Repository: CRAN
-Date/Publication: 2019-09-03 08:50:05 UTC
+Date/Publication: 2019-09-05 02:20:02 UTC
