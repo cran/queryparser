@@ -1,4 +1,4 @@
-# Copyright 2019 Cloudera Inc.
+# Copyright 2020 Cloudera Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,5 +21,5 @@ if (!exists("str2lang")) {
 
 # to avoid problems with expressions longer than about 60 characters
 deparse <- function(expr, width.cutoff = 500, ...) {
-  base::deparse(expr, width.cutoff, ...)
+  paste0(trimws(base::deparse(expr, width.cutoff, ...)), collapse = " ")
 }

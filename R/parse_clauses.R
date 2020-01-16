@@ -1,4 +1,4 @@
-# Copyright 2019 Cloudera Inc.
+# Copyright 2020 Cloudera Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,55 +20,28 @@ parse_select <- function(exprs, tidyverse, secure = TRUE) {
 
 parse_from <- function(exprs, tidyverse, secure = TRUE) {
   if (is.null(exprs)) return(NULL)
-  exprs <- sapply(exprs, parse_expression, tidyverse = tidyverse, secure = secure, USE.NAMES = FALSE)
-
-  if (length(exprs) < 1) {
-    stop("No name found in the FROM clause", call. = FALSE)
-  }
-
-  if (length(exprs) > 1) {
-    stop("Multi-table queries are not supported", call. = FALSE)
-  }
-
   expr <- exprs[[1]]
-
-  expr_parts <- strsplit(deparse(expr), "::")[[1]]
-
-  if (length(expr_parts) == 2) {
-    if (!all(vapply(
-      expr_parts,
-      is_one_valid_r_name,
-      TRUE
-    ))) {
-      stop("Invalid name in FROM clause", call. = FALSE)
-    }
-  } else if (length(expr_parts) == 1) {
-    if (!is_one_valid_r_name(expr_parts)) {
-      stop("Invalid name in FROM clause", call. = FALSE)
-    }
+  if (grepl(" join |\\,", expr, ignore.case = TRUE)) {
+    # this might be a join query
+    from <- parse_join(expr, tidyverse, secure)
   } else {
-    stop("Invalid name in FROM clause", call. = FALSE)
+    # this is not a join query
+    from <- parse_table_reference(expr, tidyverse, secure)
   }
-
-  exprs
+  from
 }
 
 parse_where <- function(exprs, tidyverse, secure = TRUE) {
   if (is.null(exprs)) return(NULL)
-  exprs <- sapply(exprs, parse_expression, tidyverse = tidyverse, secure = secure, USE.NAMES = FALSE)
-
-  if (length(exprs) > 1) {
-    stop("The WHERE clause must contain a single Boolean expression", call. = FALSE)
-  }
-
   expr <- exprs[[1]]
+  expr <- parse_expression(expr, tidyverse = tidyverse, secure = secure)
 
   if (is_aggregate_expression(expr)) {
     stop("Aggregate functions are not allowed in the WHERE clause. ",
          "Use the HAVING clause to filter by aggregates.", call. = FALSE)
   }
 
-  exprs
+  list(expr)
 }
 
 parse_group_by <- function(exprs, tidyverse, secure = TRUE) {
@@ -84,13 +57,12 @@ parse_group_by <- function(exprs, tidyverse, secure = TRUE) {
 
 parse_having <- function(exprs, tidyverse, secure = TRUE) {
   if (is.null(exprs)) return(NULL)
-  exprs <- sapply(exprs, parse_expression, tidyverse = tidyverse, secure = secure, USE.NAMES = FALSE)
 
-  if (length(exprs) > 1) {
-    stop("The HAVING clause must contain a single Boolean expression", call. = FALSE)
-  }
+  expr <- exprs[[1]]
 
-  exprs
+  expr <- parse_expression(expr, tidyverse = tidyverse, secure = secure)
+
+  list(expr)
 }
 
 parse_order_by <- function(exprs, tidyverse, secure = TRUE) {
@@ -106,7 +78,7 @@ parse_order_by <- function(exprs, tidyverse, secure = TRUE) {
 
   suppressWarnings(int_positions <- as.integer(exprs))
   if (any(!is.na(int_positions))) {
-    stop("Positional column references in the ORDER BY clause are not supported")
+    stop("Positional column references in the ORDER BY clause are not supported", call. = FALSE)
   }
 
   if (tidyverse) {
@@ -118,7 +90,7 @@ parse_order_by <- function(exprs, tidyverse, secure = TRUE) {
   exprs <- sapply(exprs, parse_expression, tidyverse = tidyverse, secure = secure, USE.NAMES = FALSE)
 
   if (!tidyverse) {
-    attr(exprs, "descreasing") <- descending_cols
+    attr(exprs, "decreasing") <- descending_cols
   }
 
   exprs
@@ -126,15 +98,16 @@ parse_order_by <- function(exprs, tidyverse, secure = TRUE) {
 
 parse_limit <- function(exprs) {
   if (is.null(exprs)) return(NULL)
+  expr <- exprs[[1]]
 
-  suppressWarnings(exprs <- as.integer(exprs))
+  suppressWarnings(expr <- as.integer(expr))
 
-  if (any(is.na(exprs)) || length(exprs) != 1 || isTRUE(exprs < 0)) {
+  if (any(is.na(expr)) || length(expr) != 1 || isTRUE(expr < 0)) {
     stop("The LIMIT clause may contain only a single ",
          "constant non-negative integer", call. = FALSE)
   }
 
-  list(exprs)
+  list(expr)
 }
 
 order_is_desc <- function(exprs) {

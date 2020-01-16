@@ -1,4 +1,4 @@
-# Copyright 2019 Cloudera Inc.
+# Copyright 2020 Cloudera Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,10 +18,11 @@
 #'   comma-separated column lists within the clauses.
 #'
 #' @param query a character string containing a SQL \code{SELECT} statement
+#' @param tidyverse for queryparser internal use only
 #' @return A list object with named elements representing the clauses of the
 #'   query
 #' @examples
-#' query <- "SELECT origin, dest,
+#' my_query <- "SELECT origin, dest,
 #'     COUNT(flight) AS num_flts,
 #'     round(AVG(distance)) AS dist,
 #'     round(AVG(arr_delay)) AS avg_delay
@@ -33,10 +34,10 @@
 #'   ORDER BY num_flts DESC, avg_delay DESC
 #'   LIMIT 100;"
 #'
-#' split_query(query)
+#' split_query(my_query)
 #' @seealso \code{\link{parse_query}}
 #' @export
-split_query <- function(query) {
+split_query <- function(query, tidyverse) {
   if (!identical(typeof(query), "character") || !identical(length(query), 1L)) {
     stop("Unexpected input to split_query()", call. = FALSE)
   }
@@ -122,9 +123,6 @@ split_query <- function(query) {
     if (!in_quotes && !in_word) {
 
       # identify unsupported syntax
-      if (clause_starts_here(rc, "case")) {
-        stop("CASE expressions are not supported", call. = FALSE)
-      }
       if (clause_starts_here(rc, "over")) {
         stop("OVER clauses are not supported", call. = FALSE)
       }
@@ -140,9 +138,6 @@ split_query <- function(query) {
     if (!in_quotes && in_parens <= 0 && !in_word) {
 
       # identify unsupported syntax
-      if (clause_starts_here(rc, "join")) {
-        stop("Joins are not supported", call. = FALSE)
-      }
       if (clause_starts_here(rc, "union")) {
         stop("The UNION operator is not supported", call. = FALSE)
       }

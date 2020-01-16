@@ -1,4 +1,4 @@
-# Copyright 2019 Cloudera Inc.
+# Copyright 2020 Cloudera Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -120,9 +120,6 @@ quasieval <- function(expr, envir) {
 
 translate_wildcard_to_regex <- function(expr) {
   # adapted from utils::glob2rx
-  if (length(expr) < 1) {
-    return(character())
-  }
   p <- gsub("\\.", "\\\\.", paste0("^", expr, "$"))
   p <- gsub("\\_", ".", gsub("\\%", ".*", p))
   p <- gsub("([^\\])\\(", "\\1\\\\(", p)

@@ -1,4 +1,4 @@
-# Copyright 2019 Cloudera Inc.
+# Copyright 2020 Cloudera Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,13 +14,6 @@
 
 #' @include common.R translations.R
 NULL
-
-# prevent this kind of horror:
-#parse_query("SELECT system('rm -rf /')")
-
-secure_expressions_list <- function(tree, tidyverse) {
-  stop_if_bad_funs(unique(unlist(vapply(unlist(tree), bad_funs, "", tidyverse = tidyverse))))
-}
 
 secure_expression <- function(expr, tidyverse) {
   stop_if_bad_funs(bad_funs(expr, tidyverse))
@@ -88,7 +81,7 @@ allowed_funs_base <- setdiff(
 
 allowed_funs_tidyverse <- unique(c(
   allowed_funs_generic,
-  "everything", "dplyr", "desc", "between",
+  "everything", "dplyr", "desc",
   names(translations_direct_tidyverse),
   names(translations_indirect_tidyverse),
   names(translations_indirect_tidyverse_agg),

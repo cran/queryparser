@@ -1,4 +1,4 @@
-# Copyright 2019 Cloudera Inc.
+# Copyright 2020 Cloudera Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -205,41 +205,59 @@ translations_direct_tidyverse <- list(
 
 translations_indirect_generic <- list(
   `%like%` = function(x, wc) {
+    if (!is_constant(eval(substitute(quote(wc))))) {
+      stop("The operand on the right side of LIKE must be a constant value", call. = FALSE)
+    }
     rx <- translate_wildcard_to_regex(wc)
     eval(substitute(quote(grepl(rx, x))))
   },
   `%nlike%` = function(x, wc) {
+    if (!is_constant(eval(substitute(quote(wc))))) {
+      stop("The operand on the right side of NLIKE must be a constant value", call. = FALSE)
+    }
     rx <- translate_wildcard_to_regex(wc)
     eval(substitute(quote(!grepl(rx, x))))
   },
   `%ilike%` = function(x, wc) {
+    if (!is_constant(eval(substitute(quote(wc))))) {
+      stop("The operand on the right side of ILIKE must be a constant value", call. = FALSE)
+    }
     rx <- translate_wildcard_to_regex(wc)
     eval(substitute(quote(grepl(rx, x, ignore.case = TRUE))))
   },
   `%nilike%` = function(x, wc) {
+    if (!is_constant(eval(substitute(quote(wc))))) {
+      stop("The operand on the right side of NILIKE must be a constant value", call. = FALSE)
+    }
     rx <- translate_wildcard_to_regex(wc)
     eval(substitute(quote(!grepl(rx, x, ignore.case = TRUE))))
   },
   `%regexp%` = function(x, rx) {
+    if (!is_constant(eval(substitute(quote(wc))))) {
+      stop("The operand on the right side of REGEXP must be a constant value", call. = FALSE)
+    }
     eval(substitute(quote(grepl(rx, x))))
   },
   `%iregexp%` = function(x, rx) {
+    if (!is_constant(eval(substitute(quote(wc))))) {
+      stop("The operand on the right side of IREGEXP must be a constant value", call. = FALSE)
+    }
     eval(substitute(quote(grepl(rx, x, ignore.case = TRUE))))
   },
   `%<=>%` = function(x, y) {
     # x is not distinct from y
     # is equivalent to
-    # if (x IS NULL OR y IS NULL, (x IS NULL) = (y IS NULL), x = y)
+    # if (x IS NULL OR y IS NULL, x IS NULL AND y IS NULL, x = y)
     eval(substitute(quote(
-      ifelse(is.na(x) | is.na(y), is.na(x) == is.na(y), x == y)
+      ifelse(is.na(x) | is.na(y), is.na(x) & is.na(y), x == y)
     )))
   },
   `%<!=>%` = function(x, y) {
     # x is distinct from y
     # is equivalent to
-    # if (x IS NULL OR y IS NULL, x IS NULL != y IS NULL, x != y)
+    # if (x IS NULL OR y IS NULL, x IS NULL XOR y IS NULL, x != y)
     eval(substitute(quote(
-      ifelse(is.na(x) | is.na(y), is.na(x) != is.na(y), x != y)
+      ifelse(is.na(x) | is.na(y), xor(is.na(x), is.na(y)), x != y)
     )))
   },
   degrees = function(rad) {
@@ -287,6 +305,18 @@ translations_indirect_generic <- list(
 )
 
 translations_indirect_base <- list(
+  yesbetween = function(x, left, right) {
+    if (missing(x) || missing(left) || missing(right)) {
+      stop("BETWEEN requires three operands", call. = FALSE)
+    }
+    eval(substitute(quote((x >= left & x <= right))))
+  },
+  notbetween = function(x, left, right) {
+    if (missing(x) || missing(left) || missing(right)) {
+      stop("NOT BETWEEN requires three operands", call. = FALSE)
+    }
+    eval(substitute(quote((x < left | x > right))))
+  },
   cast = function(x, y = NULL) {
     y <- eval(substitute(quote(y)))
     if (is.call(y) && !is_constant(y)) {
@@ -310,17 +340,65 @@ translations_indirect_base <- list(
     func <- str2lang(func_name)
     eval(substitute(quote(func(x))))
   },
+  casewhen = function(... , otherwise) {
+    dots <- eval(substitute(alist(...)))
+    otherwise <- eval(substitute(quote(otherwise)))
+    expr <- ""
+    i <- 1L
+    while(i + 1 <= length(dots)) {
+      expr <- paste0(
+        expr,
+        "ifelse(",
+        deparse(dots[[i]]),
+        ", ",
+        deparse(dots[[i + 1]]),
+        ", "
+      )
+      i <- i + 2L
+    }
+    if (missing(otherwise)) {
+      expr <- paste0(expr, "NA", paste0(rep(")", length(dots) %/% 2), collapse = ""))
+    } else {
+      expr <- paste0(expr, deparse(otherwise), paste0(rep(")", length(dots) %/% 2), collapse = ""))
+    }
+    eval(substitute(str2lang(expr)))
+  },
+  casevalue = function(value, ... , otherwise) {
+    value <- eval(substitute(quote(value)))
+    dots <- eval(substitute(alist(...)))
+    otherwise <- eval(substitute(quote(otherwise)))
+    expr <- ""
+    i <- 1L
+    while(i + 1 <= length(dots)) {
+      expr <- paste0(
+        expr,
+        "ifelse(",
+        deparse(value),
+        " == ",
+        deparse(dots[[i]]),
+        ", ",
+        deparse(dots[[i + 1]]),
+        ", "
+      )
+      i <- i + 2L
+    }
+    if (missing(otherwise)) {
+      expr <- paste0(expr, "NA", paste0(rep(")", length(dots) %/% 2), collapse = ""))
+    } else {
+      expr <- paste0(expr, deparse(otherwise), paste0(rep(")", length(dots) %/% 2), collapse = ""))
+    }
+    eval(substitute(str2lang(expr)))
+  },
   coalesce = function(...) {
     dots <- eval(substitute(alist(...)))
     if (length(dots) < 1) {
       stop("At least one argument must be passed to coalesce()", call. = FALSE)
     }
-    x <- dots[[1]]
-    expr <- paste0("if (!is.na(", x, ")) ", x, " ")
-    for (x in dots[-1]) {
-      expr <- paste0(expr, "else if (!is.na(", x, ")) ", x, " ")
+    expr <- ""
+    for (x in dots) {
+      expr <- paste0(expr, "ifelse(!is.na(", deparse(x), "), ", deparse(x), ", ")
     }
-    expr <- paste0(expr, "else NA")
+    expr <- paste0(expr, "NA", paste0(rep(")", length(dots)), collapse = ""))
     eval(substitute(str2lang(expr)))
   },
   concat_ws = function(sep, ...) {
@@ -389,6 +467,20 @@ translations_indirect_base <- list(
 )
 
 translations_indirect_tidyverse <- list(
+  yesbetween = function(x, left, right) {
+    if (missing(x) || missing(left) || missing(right)) {
+      stop("BETWEEN requires three operands", call. = FALSE)
+    }
+    fun <- str2lang("dplyr::between")
+    eval(substitute(quote(fun(x, left, right))))
+  },
+  notbetween = function(x, left, right) {
+    if (missing(x) || missing(left) || missing(right)) {
+      stop("NOT BETWEEN requires three operands", call. = FALSE)
+    }
+    fun <- str2lang("dplyr::between")
+    eval(substitute(quote(!fun(x, left, right))))
+  },
   cast = function(x, y = NULL) {
     y <- eval(substitute(quote(y)))
     if (is.call(y) && !is_constant(y)) {
@@ -411,6 +503,55 @@ translations_indirect_tidyverse <- list(
     }
     func <- str2lang(func_name)
     eval(substitute(quote(func(x))))
+  },
+  casewhen = function(... , otherwise) {
+    dots <- eval(substitute(alist(...)))
+    otherwise <- eval(substitute(quote(otherwise)))
+    expr <- "dplyr::case_when("
+    i <- 1L
+    while(i + 1 <= length(dots)) {
+      expr <- paste0(
+        expr,
+        deparse(dots[[i]]),
+        " ~ ",
+        deparse(dots[[i + 1]])
+      )
+      if (i + 1 < length(dots)) {
+        expr <- paste0(expr, ", ")
+      }
+      i <- i + 2L
+    }
+    if (!missing(otherwise)) {
+      expr <- paste0(expr, ", TRUE ~ ", deparse(otherwise))
+    }
+    expr <- paste0(expr, ")")
+    eval(substitute(str2lang(expr)))
+  },
+  casevalue = function(value, ... , otherwise) {
+    value <- eval(substitute(quote(value)))
+    dots <- eval(substitute(alist(...)))
+    otherwise <- eval(substitute(quote(otherwise)))
+    expr <- "dplyr::case_when("
+    i <- 1L
+    while(i + 1 <= length(dots)) {
+      expr <- paste0(
+        expr,
+        deparse(value),
+        " == ",
+        deparse(dots[[i]]),
+        " ~ ",
+        deparse(dots[[i + 1]])
+      )
+      if (i + 1 < length(dots)) {
+        expr <- paste0(expr, ", ")
+      }
+      i <- i + 2L
+    }
+    if (!missing(otherwise)) {
+      expr <- paste0(expr, ", TRUE ~ ", deparse(otherwise))
+    }
+    expr <- paste0(expr, ")")
+    eval(substitute(str2lang(expr)))
   },
   concat_ws = function(sep, ...) {
     fun <- str2lang("stringr::str_c")

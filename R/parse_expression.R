@@ -1,4 +1,4 @@
-# Copyright 2019 Cloudera Inc.
+# Copyright 2020 Cloudera Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,14 +31,10 @@
 #'   assignments.
 #'
 #'   The expression must not contain any unquoted whitespace characters except
-#'   spaces, and there must be no unquoted runs or two or more spaces.
-#'   Use \code{\link{squish_sql}} to satisfy this whitespace requirement.
-#'
-#'   The expression must not contain line comments (\code{--}) or block comments
-#'   (\code{/* */}).
-#'
-#'   Expressions longer than 500 characters can cause errors or unexpected
-#'   results.
+#'   spaces, and there must be no unquoted runs or two or more spaces. The
+#'   expression must not contain line comments (\code{--}) or block comments
+#'   (\code{/* */}). Use \code{\link{squish_sql}} to satisfy these whitespace
+#'   requirements and remove any comments.
 #' @seealso \code{\link{parse_query}}
 #' @export
 parse_expression <- function(expr, tidyverse = FALSE, secure = TRUE) {
@@ -117,11 +113,12 @@ parse_expression <- function(expr, tidyverse = FALSE, secure = TRUE) {
   expr_quotes_masked <- replace_star(expr_quotes_masked, tidyverse)
   expr_quotes_masked <- replace_operators_binary_symbolic(expr_quotes_masked)
   expr_quotes_masked <- replace_special_functions(expr_quotes_masked)
-  expr_quotes_masked <- replace_special_keywords(expr_quotes_masked, tidyverse)
+  expr_quotes_masked <- replace_special_keywords(expr_quotes_masked)
   expr_quotes_masked <- replace_null_with_na(expr_quotes_masked)
   expr_quotes_masked <- replace_in_operator(expr_quotes_masked)
   expr_quotes_masked <- replace_operators_binary_word(expr_quotes_masked)
   expr_quotes_masked <- replace_operators_unary_prefix(expr_quotes_masked)
+  expr_quotes_masked <- replace_qualified_names(expr_quotes_masked)
 
   # unmask text enclosed in quotations
   if (length(masked_chars) < 1 || nchar(masked_chars) < 1) {
@@ -150,7 +147,7 @@ parse_expression <- function(expr, tidyverse = FALSE, secure = TRUE) {
     secure_expression(call_out, tidyverse)
   }
 
-  # stop if any column names are R reserved words
+  # stop if any names are R reserved words
   all_words <- all_cols(call_out)
   res_words <- c(
     intersect(all_words, r_reserved_words),
@@ -160,6 +157,19 @@ parse_expression <- function(expr, tidyverse = FALSE, secure = TRUE) {
     stop(
       "Query contains R reserved words: ",
       paste(res_words, collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  # stop if any names are disallowed
+  bad_names <- intersect(
+    all_words,
+    c(if (tidyverse) ".", disallowed_names)
+  )
+  if (length(bad_names) > 0) {
+    stop(
+      "Query contains disallowed names: ",
+      paste(bad_names, collapse = ", "),
       call. = FALSE
     )
   }

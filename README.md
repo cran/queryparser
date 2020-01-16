@@ -3,12 +3,11 @@
 
 # queryparser <img src="man/figures/logo.png" align="right" width="120" />
 
-<!-- badges: start -->
-
-<!-- badges: end -->
-
 **queryparser** translates SQL queries into lists of unevaluated R
 expressions.
+
+| ⚠️ Most R users should not directly use queryparser. Instead, use it through [tidyquery](https://github.com/ianmcook/tidyquery). |
+| -------------------------------------------------------------------------------------------------------------------------------- |
 
 ## Installation
 
@@ -60,15 +59,16 @@ Queries can include the clauses `SELECT`, `FROM`, `WHERE`, `GROUP BY`,
 parse_query(
 " SELECT origin, dest,
     COUNT(flight) AS num_flts,
-    round(AVG(distance)) AS dist,
+    round(SUM(seats)) AS num_seats,
     round(AVG(arr_delay)) AS avg_delay
-  FROM flights
+  FROM flights f LEFT OUTER JOIN planes p
+    ON f.tailnum = p.tailnum
   WHERE distance BETWEEN 200 AND 300
     AND air_time IS NOT NULL
   GROUP BY origin, dest
-  HAVING num_flts > 5000
-  ORDER BY num_flts DESC, avg_delay DESC
-  LIMIT 100;"
+  HAVING num_flts > 3000
+  ORDER BY num_seats DESC, avg_delay ASC
+  LIMIT 2;"
 )
 #> $select
 #> $select[[1]]
@@ -80,19 +80,28 @@ parse_query(
 #> $select$num_flts
 #> sum(!is.na(flight))
 #> 
-#> $select$dist
-#> round(mean(distance, na.rm = TRUE))
+#> $select$num_seats
+#> round(sum(seats, na.rm = TRUE))
 #> 
 #> $select$avg_delay
 #> round(mean(arr_delay, na.rm = TRUE))
 #> 
 #> attr(,"aggregate")
-#>                      num_flts      dist avg_delay 
+#>                      num_flts num_seats avg_delay 
 #>     FALSE     FALSE      TRUE      TRUE      TRUE 
 #> 
 #> $from
-#> $from[[1]]
+#> $from$f
 #> flights
+#> 
+#> $from$p
+#> planes
+#> 
+#> attr(,"join_types")
+#> [1] "left outer join"
+#> attr(,"join_conditions")
+#> attr(,"join_conditions")[[1]]
+#> f.tailnum == p.tailnum
 #> 
 #> 
 #> $where
@@ -110,24 +119,24 @@ parse_query(
 #> 
 #> $having
 #> $having[[1]]
-#> num_flts > 5000
+#> num_flts > 3000
 #> 
 #> 
 #> $order_by
 #> $order_by[[1]]
-#> num_flts
+#> num_seats
 #> 
 #> $order_by[[2]]
 #> avg_delay
 #> 
-#> attr(,"descreasing")
-#> [1] TRUE TRUE
+#> attr(,"decreasing")
+#> [1]  TRUE FALSE
 #> attr(,"aggregate")
 #> [1] FALSE FALSE
 #> 
 #> $limit
 #> $limit[[1]]
-#> [1] 100
+#> [1] 2
 #> 
 #> 
 #> attr(,"aggregate")
@@ -183,26 +192,33 @@ parse_query("SELECT x FROM y WHERE system('rm -rf /')")
 
 **queryparser** does not currently support:
 
-  - Joins
   - Subqueries
+  - Unions
+  - SQL-89-style (implicit) join notation
   - The `WITH` clause (common table expressions)
   - `OVER` expressions (window or analytic functions)
-  - `CASE` expressions
-  - Line comments `--` or block comments `/* */`
   - Some SQL functions and operators
 
-**queryparser** currently has the following limitations:
+**queryparser** currently has the following known limitations:
 
+  - Errors can occur when SQL queries and expressions contain non-ASCII
+    Unicode characters.
+  - Some SQL expressions will translate only when `tidyverse` is set to
+    `TRUE`. An example of this is `COUNT(DISTINCT )` expressions with
+    multiple arguments.
   - When logical operators (such as `IS NULL`) have unparenthesized
     expressions as their operands, R will interpret the resulting code
     using a different order of operations than a SQL engine would. When
     using an expression as the operand to a logical operator, always
     enclose the expression in parentheses.
+  - When `tidyverse` is set to `TRUE`, SQL expressions that use `CASE`
+    or `coalesce()` with `NULL`s in the arguments can return expressions
+    that throw data type errors when evaluated. This is because `NULL`
+    translates to `NA`, which is by default a logical constant (not a
+    numeric, integer, or character constant). To work around this, cast
+    `NULL` to the expected data type in the SQL expression.
   - The error messages that occur when attempting to parse invalid or
     unrecognized SQL are often non-informative.
-  - When one or more individual expressions within a `SELECT` statement
-    are longer than 500 characters, errors or unexpected results can
-    occur.
 
 ## Non-Goals
 

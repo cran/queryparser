@@ -51,7 +51,7 @@ test_that("parse_query(tidy = FALSE) works on 'flights' example query", {
       where = list(quote((distance >= 200 & distance <= 300) &
       !is.na(air_time))), group_by = list(quote(origin), quote(dest)),
       having = list(quote(num_flts > 3000)), order_by = structure(list(
-      quote(num_flts), quote(avg_delay)), descreasing = c(TRUE,
+      quote(num_flts), quote(avg_delay)), decreasing = c(TRUE,
       TRUE), aggregate = c(FALSE, FALSE)), limit = list(100L)), aggregate = TRUE)
   )
 })
@@ -312,9 +312,243 @@ test_that("parse_query(tidy = TRUE) works on 'flights' SELECT DISTINCT example q
   )
 })
 
+test_that("parse_query() works on SELECT ALL example query", {
+  expect_equal(
+    parse_query("SELECT ALL year, month, day FROM flights"),
+    list(select = list(quote(year), quote(month), quote(day)), from = list(
+      quote(flights)))
+  )
+})
+
 test_that("parse_query() stops on positional column references in ORDER BY clause", {
   expect_error(
     parse_query("SELECT x, y, z FROM t ORDER BY 1 DESC, 2"),
     "^Positional"
+  )
+})
+
+test_that("parse_query() stops when unvalid expression used in an aggregate query", {
+  expect_error(
+    parse_query("SELECT x FROM y GROUP BY z"),
+    "aggregation"
+  )
+})
+
+test_that("parse_query() stops when unvalid expression used in a SELECT DISTINCT query", {
+  expect_error(
+    parse_query("SELECT DISTINCT x FROM y ORDER BY z"),
+    "DISTINCT"
+  )
+})
+
+test_that("parse_query() stops on incomplete CAST expression", {
+  expect_error(
+    parse_query("SELECT CAST(x) FROM y"),
+    "cast"
+  )
+})
+
+test_that("parse_query() stops on malformed CAST expression", {
+  expect_error(
+    parse_query("SELECT CAST(x) AS y FROM z"),
+    "cast"
+  )
+})
+
+test_that("parse_query() stops on incomplete BETWEEN expression", {
+  expect_error(
+    parse_query("SELECT x FROM y WHERE a BETWEEN b"),
+    "BETWEEN"
+  )
+})
+
+test_that("parse_query() stops when invalid object name in FROM clause", {
+  expect_error(
+    parse_query("SELECT * FROM `1a`"),
+    "^Invalid name"
+  )
+})
+
+test_that("parse_query() stops when expression (not name) in FROM clause", {
+  expect_error(
+    parse_query("SELECT * FROM 1+2+3"),
+    "^Invalid name"
+  )
+})
+
+test_that("parse_query() stops when invalid namespace name in FROM clause", {
+  expect_error(
+    parse_query("SELECT * FROM `1a`::foo"),
+    "^Invalid name"
+  )
+})
+
+test_that("parse_query() stops when aggregate expression in WHERE clause", {
+  expect_error(
+    parse_query("SELECT x WHERE COUNT(*) > 2"),
+    "^Aggregate"
+  )
+})
+
+test_that("parse_query() stops when aggregate expression in GROUP BY clause", {
+  expect_error(
+    parse_query("SELECT x GROUP BY SUM(x)"),
+    "^Aggregate"
+  )
+})
+
+test_that("parse_query() stops when invalid use of ASC in ORDER BY clause", {
+  expect_error(
+    parse_query("SELECT x FROM y ORDER BY x, ASC"),
+    "^Invalid"
+  )
+})
+
+test_that("parse_query() stops when invalid use of DESC in ORDER BY clause", {
+  expect_error(
+    parse_query("SELECT x FROM y ORDER BY x, DESC"),
+    "^Invalid"
+  )
+})
+
+test_that("parse_query() stops when expression in LIMIT clause", {
+  expect_error(
+    parse_query("SELECT x FROM y LIMIT sqrt(100)"),
+    "constant"
+  )
+})
+
+test_that("parse_query() stops when column name in LIMIT clause", {
+  expect_error(
+    parse_query("SELECT x FROM y LIMIT z"),
+    "constant"
+  )
+})
+
+test_that("parse_query() stops when input is not a character vector", {
+  expect_error(
+    parse_query(42),
+    "^Unexpected"
+  )
+})
+
+test_that("parse_query() stops when input is has length > 1", {
+  expect_error(
+    parse_query(c("SELECT w FROM x", "SELECT y FROM z")),
+    "^Unexpected"
+  )
+})
+
+test_that("parse_query() stops when query does not begin with SELECT", {
+  expect_error(
+    parse_query("ORDER BY z"),
+    "begin"
+  )
+})
+
+test_that("parse_query() stops on OVER clauses", {
+  expect_error(
+    parse_query("SELECT SUM(x) OVER(PARTITION BY y) FROM z"),
+    "OVER"
+  )
+})
+
+test_that("parse_query() stops on UNION", {
+  expect_error(
+    parse_query("SELECT * FROM x UNION SELECT * FROM y"),
+    "UNION"
+  )
+})
+
+test_that("parse_query() stops on INTERSECT", {
+  expect_error(
+    parse_query("SELECT * FROM x INTERSECT SELECT * FROM y"),
+    "INTERSECT"
+  )
+})
+
+test_that("parse_query() stops on EXCEPT", {
+  expect_error(
+    parse_query("SELECT * FROM x EXCEPT SELECT * FROM y"),
+    "EXCEPT"
+  )
+})
+
+test_that("parse_query() stops on subquery", {
+  expect_error(
+    parse_query("SELECT * FROM table WHERE x IN (SELECT z FROM table2) t;"),
+    "^Subqueries"
+  )
+})
+
+test_that("parse_query() stops on unmatched quotation marks", {
+  expect_error(
+    parse_query("SELECT 'hello FROM x"),
+    "unmatched"
+  )
+})
+
+test_that("parse_query() stops on unmatched quotation parentheses", {
+  expect_error(
+    parse_query("SELECT sqrt(16 FROM y"),
+    "unmatched"
+  )
+})
+
+test_that("parse_query() stops on repated clause", {
+  expect_error(
+    parse_query("SELECT x FROM y WHERE z WHERE w"),
+    "times"
+  )
+})
+
+test_that("parse_query() stops on clauses in incorrect order", {
+  expect_error(
+    parse_query("SELECT x GROUP BY z FROM y"),
+    "order"
+  )
+})
+
+test_that("parse_query() removes table name prefixes in single-table queries", {
+  expect_equal(
+    {
+      query <- "SELECT flights.year, flights.month, flights.day
+        FROM flights
+        WHERE flights.arr_delay <= 0
+        ORDER BY flights.carrier"
+      parse_query(query)
+    },
+    list(select = list(quote(year), quote(month), quote(day)), from = list(quote(flights)),
+      where = list(quote(arr_delay <= 0)), order_by = structure(list(quote(carrier)),
+      decreasing = FALSE))
+  )
+})
+
+test_that("parse_query() removes table alias prefixes in single-table queries", {
+  expect_equal(
+    {
+      query <- "SELECT f.year, f.month, f.day
+        FROM flights f
+        WHERE f.arr_delay <= 0
+        ORDER BY f.carrier"
+      parse_query(query)
+    },
+    list(select = list(quote(year), quote(month), quote(day)), from = list(f = quote(flights)),
+      where = list(quote(arr_delay <= 0)), order_by = structure(list(quote(carrier)),
+      decreasing = FALSE))
+  )
+})
+
+test_that("parse_query() stops when column alias is disallowed", {
+  expect_error(
+    parse_query("SELECT x AS character FROM y"),
+    "disallowed"
+  )
+})
+
+test_that("parse_query() stops when table alias is disallowed", {
+  expect_error(
+    parse_query("SELECT x FROM y 'is'"),
+    "disallowed"
   )
 })

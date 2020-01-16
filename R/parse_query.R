@@ -1,4 +1,4 @@
-# Copyright 2019 Cloudera Inc.
+# Copyright 2020 Cloudera Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,10 +33,7 @@ NULL
 #'   Depending on the arguments, the returned list and its sublists will have
 #'   attributes named \code{distinct}, \code{aggregate}, and \code{decreasing}
 #'   with logical values that can aid in the evaluation of the R expressions.
-#' @details The query must not contain line comments (\code{--}) or block
-#'   comments (\code{/* */}).
-#'
-#'   When one or more individual expressions within a query are longer than 500
+#' @details When one or more individual expressions within a query are longer than 500
 #'   characters, errors or unexpected results can occur.
 #'
 #'   See the
@@ -44,7 +41,7 @@ NULL
 #'   limitations} section of the \code{README} for information about what types
 #'   of queries are supported.
 #' @examples
-#' query <- "SELECT origin, dest,
+#' my_query <- "SELECT origin, dest,
 #'     COUNT(flight) AS num_flts,
 #'     round(AVG(distance)) AS dist,
 #'     round(AVG(arr_delay)) AS avg_delay
@@ -56,9 +53,9 @@ NULL
 #'   ORDER BY num_flts DESC, avg_delay DESC
 #'   LIMIT 100;"
 #'
-#' parse_query(query)
+#' parse_query(my_query)
 #'
-#' parse_query(query, tidyverse = TRUE)
+#' parse_query(my_query, tidyverse = TRUE)
 #' @seealso \code{\link{parse_expression}}
 #' @export
 parse_query <- function(query, tidyverse = FALSE, secure = TRUE) {
@@ -71,7 +68,7 @@ parse_query <- function(query, tidyverse = FALSE, secure = TRUE) {
     stop("Unexpected input to parse_query()", call. = FALSE)
   }
 
-  tree <- split_query(query)
+  tree <- split_query(query, tidyverse)
 
   is_select_distinct <- isTRUE(attr(tree$select, "distinct"))
   is_select_star <- any(tree$select == "*")
@@ -90,6 +87,11 @@ parse_query <- function(query, tidyverse = FALSE, secure = TRUE) {
   tree$having <- parse_having(tree$having, tidyverse, secure)
   tree$order_by <- parse_order_by(tree$order_by, tidyverse, secure)
   tree$limit <- parse_limit(tree$limit)
+
+  bad_aliases <- intersect(c(names(tree$select), names(tree$from)), disallowed_aliases)
+  if (length(bad_aliases) > 0) {
+    stop("Query contains disallowed aliases: ", paste(bad_aliases, collapse = ", "), call. = FALSE)
+  }
 
   is_aggregate_expression_in_select_list <- are_aggregate_expressions(tree$select)
   is_aggregate_expression_in_order_by_list <- are_aggregate_expressions(tree$order_by)
@@ -175,6 +177,17 @@ parse_query <- function(query, tidyverse = FALSE, secure = TRUE) {
 
     attr(tree$select, "distinct") <- TRUE
 
+  }
+
+  if (length(tree$from) == 1) {
+    table_name <- as.character(tree$from[[1]])
+    if (!is.null(names(tree$from)) && names(tree$from) != "") {
+      table_alias <- names(tree$from)
+    } else {
+      table_alias <- character(0)
+    }
+    table_prefixes <- c(table_name, table_alias)
+    tree <- unqualify_query(tree, table_prefixes)
   }
 
   tree

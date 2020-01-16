@@ -40,7 +40,6 @@ test_that("parse_expression(tidy = TRUE) successfully parses test expression #3 
   )
 })
 
-
 test_that("parse_expression(tidy = FALSE) successfully parses test expression #4 with CAST and BETWEEN", {
   expect_equal(
     parse_expression("if (1 + cast(2 + 3 + sqrt(4) as integer) between 7 and 11 - 1, 'a', 'b')", tidy = FALSE),
@@ -71,15 +70,15 @@ test_that("parse_expression(tidy = TRUE) successfully parses test expression #5 
 
 test_that("parse_expression(tidy = FALSE) successfully parses test expression #7 with coalesce()", {
   expect_equal(
-    parse_expression("coalesce(w, x, y, z)", tidy = FALSE),
-    str2lang("if (!is.na(w)) w else if (!is.na(x)) x else if (!is.na(y)) y else if (!is.na(z)) z else NA")
+    parse_expression("coalesce(abs(w + 2), x, y, z)", tidy = FALSE),
+    str2lang("ifelse(!is.na(abs(w + 2)), abs(w + 2), ifelse(!is.na(x), x, ifelse(!is.na(y), y, ifelse(!is.na(z), z, NA))))")
   )
 })
 
-test_that("parse_expression(tidy = FALSE) successfully parses test expression #7 with coalesce()", {
+test_that("parse_expression(tidy = TRUE) successfully parses test expression #7 with coalesce()", {
   expect_equal(
-    parse_expression("coalesce(w, x, y, z)", tidy = TRUE),
-    str2lang("dplyr::coalesce(w, x, y, z)")
+    parse_expression("coalesce(abs(w + 2), x, y, z)", tidy = TRUE),
+    str2lang("dplyr::coalesce(abs(w + 2), x, y, z)")
   )
 })
 
@@ -149,21 +148,153 @@ test_that("parse_expression(tidy = TRUE) successfully parses test expression #13
 test_that("parse_expression() successfully parses test expression #13 with IS NOT DISTINCT FROM", {
   expect_equal(
     parse_expression("x is not distinct from y"),
-    str2lang("ifelse(is.na(x) | is.na(y), is.na(x) == is.na(y), x == y)")
+    str2lang("ifelse(is.na(x) | is.na(y), is.na(x) & is.na(y), x == y)")
   )
 })
 
 test_that("parse_expression() successfully parses test expression #14 with <=>", {
   expect_equal(
     parse_expression("x <=> y"),
-    str2lang("ifelse(is.na(x) | is.na(y), is.na(x) == is.na(y), x == y)")
+    str2lang("ifelse(is.na(x) | is.na(y), is.na(x) & is.na(y), x == y)")
   )
 })
 
 test_that("parse_expression() successfully parses test expression #15 with IS DISTINCT FROM", {
   expect_equal(
     parse_expression("x is distinct from y"),
-    str2lang("ifelse(is.na(x) | is.na(y), is.na(x) != is.na(y), x != y)")
+    str2lang("ifelse(is.na(x) | is.na(y), xor(is.na(x), is.na(y)), x != y)")
+  )
+})
+
+test_that("parse_expression(tidy = FALSE) successfully parses test expression #16 with CASE", {
+  expect_equal(
+    parse_expression(paste(
+      "CASE size WHEN 'L' THEN 'large'",
+      "WHEN 'M' THEN 'medium'",
+      "WHEN 'S' THEN 'small' END"), tidy = FALSE),
+    quote(ifelse(size == 'L', 'large', ifelse(size == 'M', 'medium', ifelse(size == 'S', 'small', NA))))
+  )
+})
+
+test_that("parse_expression(tidy = TRUE) successfully parses test expression #16 with CASE", {
+  expect_equal(
+    parse_expression(paste(
+      "CASE size WHEN 'L' THEN 'large'",
+      "WHEN 'M' THEN 'medium'",
+      "WHEN 'S' THEN 'small' END"), tidy = TRUE),
+    str2lang("dplyr::case_when(size == 'L' ~ 'large', size == 'M' ~ 'medium',
+             size == 'S' ~ 'small')")
+  )
+})
+
+test_that("parse_expression(tidy = FALSE) successfully parses test expression #17 with CASE", {
+  expect_equal(
+    parse_expression(paste(
+      "CASE size WHEN 'L' THEN 'large'",
+      "WHEN 'M' THEN 'medium'",
+      "WHEN 'S' THEN 'small'",
+      "ELSE 'other' END"), tidy = FALSE),
+    quote(ifelse(size == 'L', 'large', ifelse(size == 'M', 'medium', ifelse(size == 'S', 'small', 'other'))))
+  )
+})
+
+test_that("parse_expression(tidy = TRUE) successfully parses test expression #17 with CASE", {
+  expect_equal(
+    parse_expression(paste(
+      "CASE size WHEN 'L' THEN 'large'",
+      "WHEN 'M' THEN 'medium'",
+      "WHEN 'S' THEN 'small'",
+      "ELSE 'other' END"), tidy = TRUE),
+    str2lang("dplyr::case_when(size == 'L' ~ 'large', size == 'M' ~ 'medium',
+      size == 'S' ~ 'small', TRUE ~ 'other')")
+  )
+})
+
+test_that("parse_expression(tidy = FALSE) successfully parses test expression #18 with CASE", {
+  expect_equal(
+    parse_expression(paste(
+      "CASE WHEN size >= 46 THEN 'other' WHEN size >= 42 THEN 'large'",
+      "WHEN size >= 38 THEN 'medium'",
+      "WHEN size >= 34 THEN 'small' END"), tidy = FALSE),
+    quote(
+      ifelse(size >= 46, 'other',
+             ifelse(size >= 42, 'large',
+                    ifelse(size >= 38, 'medium',
+                           ifelse(size >= 34, 'small', NA)))))
+  )
+})
+
+test_that("parse_expression(tidy = TRUE) successfully parses test expression #18 with CASE", {
+  expect_equal(
+    parse_expression(paste(
+      "CASE WHEN size >= 46 THEN 'other' WHEN size >= 42 THEN 'large'",
+      "WHEN size >= 38 THEN 'medium'",
+      "WHEN size >= 34 THEN 'small' END"), tidy = TRUE),
+    str2lang("dplyr::case_when(size >= 46 ~ 'other', size >= 42 ~ 'large',
+      size >= 38 ~ 'medium', size >= 34 ~ 'small')")
+  )
+})
+
+test_that("parse_expression(tidy = FALSE) successfully parses test expression #19 with CASE", {
+  expect_equal(
+    parse_expression(paste(
+      "CASE WHEN size >= 46 THEN 'other' WHEN size >= 42 THEN 'large'",
+      "WHEN size >= 38 THEN 'medium'",
+      "WHEN size >= 34 THEN 'small'",
+      "ELSE 'other' END"), tidy = FALSE),
+    quote(
+      ifelse(size >= 46, 'other',
+             ifelse(size >= 42, 'large',
+                    ifelse(size >= 38, 'medium',
+                           ifelse(size >= 34, 'small', 'other')))))
+  )
+})
+
+test_that("parse_expression(tidy = TRUE) successfully parses test expression #19 with CASE", {
+  expect_equal(
+    parse_expression(paste(
+      "CASE WHEN size >= 46 THEN 'other' WHEN size >= 42 THEN 'large'",
+      "WHEN size >= 38 THEN 'medium'",
+      "WHEN size >= 34 THEN 'small'",
+      "ELSE 'other' END"), tidy = TRUE),
+    str2lang("dplyr::case_when(size >= 46 ~ 'other', size >= 42 ~ 'large',
+             size >= 38 ~ 'medium', size >= 34 ~ 'small', TRUE ~ 'other')")
+  )
+})
+
+test_that("parse_expression() stops on malformed CASE expression with no END", {
+  expect_error(
+    parse_expression(paste(
+      "CASE WHEN size >= 46 THEN 'other' WHEN size >= 42 THEN 'large'",
+      "WHEN size >= 38 THEN 'medium'",
+      "WHEN size >= 34 THEN 'small'",
+      "ELSE 'other'")),
+    "END"
+  )
+})
+
+test_that("parse_expression() stops on malformed CASE expression with no WHEN ... THEN", {
+  expect_error(
+    parse_expression("CASE ELSE 'other' END"),
+    "WHEN"
+  )
+})
+
+test_that("parse_expression() stops on malformed CASE expression with WHEN missing THEN", {
+  expect_error(
+    parse_expression(paste(
+      "CASE WHEN size >= 46 THEN 'other' WHEN size >= 42 THEN 'large'",
+      "WHEN size >= 38 THEN 'medium'",
+      "WHEN size >= 34",
+      "ELSE 'other' END")),
+    "THEN"
+  )
+})
+
+test_that("parse_expression(tidy = FALSE) stops when coalesce() has no arguments", {
+  expect_error(
+    parse_expression("coalesce()", tidy = FALSE),
+    "argument"
   )
 })
 
@@ -178,6 +309,20 @@ test_that("parse_expression(tidyverse = TRUE) stops when multiple expressions to
   expect_error(
     parse_expression("AVG(DISTINCT x, y)", tidyverse = TRUE),
     "^Multiple arguments"
+  )
+})
+
+test_that("parse_expression(tidyverse = FALSE) succeeds when one expression to COUNT DISTINCT", {
+  expect_equal(
+    parse_expression("COUNT(DISTINCT x)", tidyverse = FALSE),
+    quote(sum(!is.na(unique(x))))
+  )
+})
+
+test_that("parse_expression(tidyverse = TRUE) succeeds when one expression to COUNT DISTINCT", {
+  expect_equal(
+    parse_expression("COUNT(DISTINCT x)", tidyverse = TRUE),
+    str2lang("dplyr::n_distinct(x, na.rm = TRUE)")
   )
 })
 
@@ -206,5 +351,89 @@ test_that("parse_expression(tidyverse = TRUE) does not translate column names th
   expect_equal(
     parse_expression("upper(initcap)", tidyverse = TRUE),
     str2lang("stringr::str_to_upper(initcap)")
+  )
+})
+
+test_that("parse_expression() wraps `!` args in parentheses", {
+  expect_equal(
+    parse_expression("NOT NOT NOT (x OR y)"),
+    quote(!(!(!(x | y))))
+  )
+})
+
+test_that("parse_expression(tidyverse = FALSE) successfully translates BETWEEN with quoted operands", {
+  expect_equal(
+    parse_expression("'b' BETWEEN 'a' AND 'c'", tidyverse = FALSE),
+    quote(("b" >= "a" & "b" <= "c"))
+  )
+})
+
+test_that("parse_expression(tidyverse = TRUE) successfully translates BETWEEN with quoted operands", {
+  expect_equal(
+    parse_expression("'b' BETWEEN 'a' AND 'c'", tidyverse = TRUE),
+    str2lang("dplyr::between('b', 'a', 'c')")
+  )
+})
+
+test_that("parse_expression(tidyverse = FALSE) successfully translates NOT BETWEEN with quoted operands", {
+  expect_equal(
+    parse_expression("'b' NOT BETWEEN 'a' AND 'c'", tidyverse = FALSE),
+    quote(("b" < "a" | "b" > "c"))
+  )
+})
+
+test_that("parse_expression(tidyverse = TRUE) successfully translates NOT BETWEEN with quoted operands", {
+  expect_equal(
+    parse_expression("'b' NOT BETWEEN 'a' AND 'c'", tidyverse = TRUE),
+    str2lang("!dplyr::between('b', 'a', 'c')")
+  )
+})
+
+test_that("parse_expression() successfully translates expression with LIKE", {
+  expect_equal(
+    parse_expression("x LIKE 'a%d_f'"),
+    quote(grepl("^a.*d.f$", x))
+  )
+})
+
+test_that("parse_expression() stops when input is not a character vector", {
+  expect_error(
+    parse_expression(42),
+    "^Unexpected"
+  )
+})
+
+test_that("parse_expression() stops when input is has length > 1", {
+  expect_error(
+    parse_expression(c("sqrt(4)", "sqrt(9)")),
+    "^Unexpected"
+  )
+})
+
+test_that("parse_expression() properly handles quote character escaped by doubling", {
+  expect_equal(
+    parse_expression("x LIKE 'isn''t'"),
+    quote(grepl("^isn't$", x))
+  )
+})
+
+test_that("parse_expression() properly handles quote character escaped with backslash", {
+  expect_equal(
+    parse_expression("x LIKE 'isn\\'t'"),
+    quote(grepl("^isn't$", x))
+  )
+})
+
+test_that("parse_expression() stops when column name is an R reserved word in backticks", {
+  expect_error(
+    parse_expression("SUM(`break`)"),
+    "reserved"
+  )
+})
+
+test_that("parse_expression() stops when column name is disallowed", {
+  expect_error(
+    parse_expression("sqrt(is)"),
+    "disallowed"
   )
 })

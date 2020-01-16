@@ -4,10 +4,12 @@
 \alias{split_query}
 \title{Split a SQL query}
 \usage{
-split_query(query)
+split_query(query, tidyverse)
 }
 \arguments{
 \item{query}{a character string containing a SQL \code{SELECT} statement}
+
+\item{tidyverse}{for queryparser internal use only}
 }
 \value{
 A list object with named elements representing the clauses of the
@@ -18,7 +20,7 @@ Splits a SQL \code{SELECT} statement into clauses, and splits
   comma-separated column lists within the clauses.
 }
 \examples{
-query <- "SELECT origin, dest,
+my_query <- "SELECT origin, dest,
     COUNT(flight) AS num_flts,
     round(AVG(distance)) AS dist,
     round(AVG(arr_delay)) AS avg_delay
@@ -30,7 +32,7 @@ query <- "SELECT origin, dest,
   ORDER BY num_flts DESC, avg_delay DESC
   LIMIT 100;"
 
-split_query(query)
+split_query(my_query)
 }
 \seealso{
 \code{\link{parse_query}}
