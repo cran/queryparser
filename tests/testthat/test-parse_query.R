@@ -633,3 +633,28 @@ test_that("parse_query() succeeds when parentheses around table name and alias a
     NA
   )
 })
+
+test_that("parse_query() succeeds with test query #1 on syntactically invalid column name in backticks", {
+  expect_error(
+    parse_query("SELECT x.`y z` FROM x"),
+    NA
+  )
+})
+
+test_that("parse_query() succeeds with test query #2 on syntactically invalid column name in backticks", {
+  expect_error(
+    parse_query("SELECT sqrt(x.`y z`) FROM x"),
+    NA
+  )
+})
+
+test_that("parse_query() succeeds with test query #3 on syntactically invalid column name in backticks", {
+  expect_error(
+    parse_query("SELECT round(x.`y z`, 2) FROM x"),
+    NA
+  )
+})
+
+# generate result objects like this:
+#result <- parse_query("SELECT ...")
+#str2lang(queryparser:::deparse(result, width.cutoff = 500L, control = c("quoteExpressions", "showAttributes", "niceNames")))

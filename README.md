@@ -9,6 +9,11 @@ expressions.
 | ⚠️ Most R users should not directly use queryparser. Instead, use it through [tidyquery](https://github.com/ianmcook/tidyquery). |
 | -------------------------------------------------------------------------------------------------------------------------------- |
 
+For an introduction to **tidyquery** and **queryparser**, watch the
+recording of the talk [“Bridging the Gap between SQL and
+R”](https://www.youtube.com/watch?v=JwP5KdWSgqE) from
+rstudio::conf(2020).
+
 ## Installation
 
 Install the released version of **queryparser** from
@@ -22,8 +27,8 @@ Or install the development version from
 [GitHub](https://github.com/ianmcook/queryparser) with:
 
 ``` r
-# install.packages("devtools")
-devtools::install_github("ianmcook/queryparser")
+# install.packages("remotes")
+remotes::install_github("ianmcook/queryparser")
 ```
 
 ## Usage
@@ -199,8 +204,6 @@ parse_query("SELECT x FROM y WHERE system('rm -rf /')")
 
 **queryparser** currently has the following known limitations:
 
-  - Errors can occur when SQL queries and expressions contain non-ASCII
-    Unicode characters.
   - Some SQL expressions will translate only when `tidyverse` is set to
     `TRUE`. An example of this is `COUNT(DISTINCT )` expressions with
     multiple arguments.

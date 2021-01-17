@@ -1,12 +1,12 @@
 Package: queryparser
 Type: Package
 Title: Translate 'SQL' Queries into 'R' Expressions
-Version: 0.3.0
+Version: 0.3.1
 Authors@R: c(
-    person("Ian", "Cook", email = "ian@cloudera.com", role = c("aut", "cre")),
+    person("Ian", "Cook", email = "ianmcook@gmail.com", role = c("aut", "cre")),
     person(family = "Cloudera", role = c("cph"))
     )
-Maintainer: Ian Cook <ian@cloudera.com>
+Maintainer: Ian Cook <ianmcook@gmail.com>
 Description: Translate 'SQL' 'SELECT' statements into lists of 'R' expressions.
 URL: https://github.com/ianmcook/queryparser
 BugReports: https://github.com/ianmcook/queryparser/issues
@@ -22,8 +22,8 @@ Collate: 'compat.R' 'agg_scalar.R' 'check_expressions.R'
         'split_query.R' 'squish_sql.R' 'translate.R' 'unpipe.R'
         'unqualify.R' 'wrap_bangs.R'
 Suggests: testthat (>= 2.1.0), covr (>= 3.2.0)
-Packaged: 2020-05-09 21:26:08 UTC; icook
+Packaged: 2021-01-17 03:41:38 UTC; ian
 Author: Ian Cook [aut, cre],
   Cloudera [cph]
 Repository: CRAN
-Date/Publication: 2020-05-10 06:30:02 UTC
+Date/Publication: 2021-01-17 07:00:02 UTC
