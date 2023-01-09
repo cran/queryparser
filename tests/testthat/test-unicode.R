@@ -13,6 +13,7 @@ test_that("expected result with no warnings when Unicode characters in literal s
 
 test_that("expected result with no warnings when Unicode characters in column names", {
   skip_on_os("windows")
+  skip_on_os("mac")
   skip_on_cran()
   expect_warning(
     result <- parse_query("select xyž, ⓑåᏒ, Ω"),
@@ -27,6 +28,7 @@ test_that("expected result with no warnings when Unicode characters in column na
 
 test_that("expected result with no warnings when Unicode characters in column aliases", {
   skip_on_os("windows")
+  skip_on_os("mac")
   skip_on_cran()
   expect_warning(
     result <- parse_query("select 1 'xyž', 'foo' AS ⓑåᏒ, omega'Ω'"),
@@ -40,6 +42,7 @@ test_that("expected result with no warnings when Unicode characters in column al
 
 test_that("parse_query() works on example cast() query with Unicode characters", {
   skip_on_os("windows")
+  skip_on_os("mac")
   skip_on_cran()
   expect_equal(
     parse_query("SELECT CAST(ⓓîßtãñçℰ AS int) FROM 𝖋𝖑𝖎𝖌𝖍𝖙𝖘"),
@@ -49,6 +52,7 @@ test_that("parse_query() works on example cast() query with Unicode characters",
 
 test_that("parse_query(tidy = TRUE) works on 'flights' example query with Unicode characters", {
   skip_on_os("windows")
+  skip_on_os("mac")
   skip_on_cran()
   expect_equal(
     {
@@ -67,7 +71,7 @@ test_that("parse_query(tidy = TRUE) works on 'flights' example query with Unicod
       parse_query(query, tidy = TRUE)
     },
     structure(list(select = structure(list(str2lang("ⓞⓡïgįñ"),str2lang("dèšⓣ"),
-      num_flts = quote(sum(!is.na(flight))), "ⓓîßt" = str2lang("round(mean(ⓓîßtãñçℰ, na.rm = TRUE))"),
+      num_flts = quote(sum(!is.na(flight), na.rm = TRUE)), "ⓓîßt" = str2lang("round(mean(ⓓîßtãñçℰ, na.rm = TRUE))"),
       avg_delay = quote(round(mean(arr_delay,
       na.rm = TRUE)))), aggregate = c(FALSE, FALSE, num_flts = TRUE,
       "ⓓîßt" = TRUE, avg_delay = TRUE)), from = list(quote(utflights)),

@@ -1,4 +1,4 @@
-# Copyright 2020 Cloudera Inc.
+# Copyright 2023 Cloudera Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,4 +35,29 @@ deparse <- function(expr, width.cutoff = 500, ...) {
 # in R version 4.0.0 and higher
 readChar <- function (con, nchars, useBytes = FALSE) {
   suppressWarnings(base::readChar(con, nchars, useBytes))
+}
+
+# to avoid incompatibilities between newer versions of queryparser and older
+# versions of tidyquery, call this function at the top of every queryparser
+# function that is imported by tidyquery
+assert_tidyquery_version <- function(min_version = "0.2.0") {
+  # is the function that called this function being called from tidyquery?
+  if (identical(get0(".packageName", topenv(parent.frame(2)), inherits = FALSE), "tidyquery")) {
+    current_version <-
+      mget(
+        ".tidyquery.version",
+        envir = asNamespace("tidyquery"),
+        ifnotfound = list(package_version("0.0.0")),
+        inherits = FALSE
+      )[[1]]
+    # if yes, error if tidyquery version too old
+    if (current_version < package_version(min_version)) {
+      stop(
+        "Incompatible tidyquery version. Install tidyquery ",
+        min_version,
+        " or higher",
+        call. = FALSE
+      )
+    }
+  }
 }

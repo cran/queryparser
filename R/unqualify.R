@@ -1,4 +1,4 @@
-# Copyright 2020 Cloudera Inc.
+# Copyright 2023 Cloudera Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,6 +48,8 @@ unqualify_query <- function(tree, prefixes, except = character(0)) {
       !is.character(except)) {
     stop("Unexpected input to unqualify_query()", call. = FALSE)
   }
+
+  assert_tidyquery_version()
 
   tree$select <- unqualify_clause(tree$select, prefixes, except)
   tree$where <- unqualify_clause(tree$where, prefixes, except)

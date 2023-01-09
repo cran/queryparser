@@ -1,4 +1,4 @@
-# Copyright 2020 Cloudera Inc.
+# Copyright 2023 Cloudera Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,6 +41,9 @@ column_references <- function(tree, from = TRUE) {
   if (!is.list(tree) || !("select" %in% names(tree))) {
     stop("Unexpected input to column_references()", call. = FALSE)
   }
+
+  assert_tidyquery_version()
+
   unique(c(
     column_references_in_clause(tree$select),
     if (from) column_references_in_clause(attr(tree$from, "join_conditions")),

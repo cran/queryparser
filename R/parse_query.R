@@ -1,4 +1,4 @@
-# Copyright 2020 Cloudera Inc.
+# Copyright 2023 Cloudera Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -67,6 +67,8 @@ parse_query <- function(query, tidyverse = FALSE, secure = TRUE) {
       !identical(length(secure), 1L)) {
     stop("Unexpected input to parse_query()", call. = FALSE)
   }
+
+  assert_tidyquery_version()
 
   tree <- split_query(query, tidyverse)
 
